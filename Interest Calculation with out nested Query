@@ -1,0 +1,56 @@
+public class InterestCalculationHandler implements Database.Batchable <sObject> {
+
+    public list<sobject> start(Database.BatchableContext ba){
+        return(
+        [Select Id from Account]
+        );
+    }
+    
+     public void execute(Database.BatchableContext ba, List<sObject> scope){
+        set<Id> accountIds = new set<Id>();
+         set<Id> orderIds = new set<Id>();
+         map<Id,Order[]> orderMap = new map<Id,Order[]>();
+         for(Account a : (Account[])scope){
+             accountIds.add(a.Id);
+         }
+         Order[] orderlist =[select Id,AccountId from Order where AccountId in :accountIds];
+         for(Order o:orderlist){
+             if(!orderMap.containsKey(o.AccountId)){
+                 orderMap.put(o.AccountId,new Order[]{o});
+             }
+             else{
+                 orderMap.get(o.AccountId).add(o);
+             }
+         }
+         Order[] ordertoInsert = new Order[]{};
+         OrderItem[] orderItemstoInsert = new OrderItem[]{};  
+         for(Account a : (Account[])scope){
+             if(orderMap.containsKey(a.Id) && !orderMap.get(a.Id).isEmpty()){
+                 Id OrderId = orderMap.get(a.Id)[0].Id;
+                 orderItemstoInsert.add(new OrderItem(OrderId = OrderId, Quantity = 2));
+             }
+             else{
+                 ordertoInsert.add(new Order(AccountId =a.Id));
+             }
+         }
+         
+         
+         Database.Insert(ordertoInsert,false); //Inserting Order
+         map<Id ,OrderItem[]> orderItemMap = new map<Id,OrderItem[]>();
+         for(Order o :ordertoInsert){
+             OrderItem oi =new OrderItem(OrderId = o.Id , Quantity = 2);
+             orderItemMap.put(o.Id , new OrderItem[]{oi});
+         }
+         
+         for(OrderItem[] oilist : orderItemMap.values()){
+              orderItemstoInsert.addAll(oilist);
+         }
+       
+         
+         Database.Insert(orderItemstoInsert,false);
+    }
+    
+     public void finish(Database.BatchableContext ba){
+        
+    }
+}
